@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 async function main() {
-  console.log('Seeding complete.');
+  console.log('No sample tasks seeded.');
 }
 
 main().catch((error) => {
