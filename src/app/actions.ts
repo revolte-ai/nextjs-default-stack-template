@@ -6,14 +6,22 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { tasks } from '@/db/schema';
 
-const taskTitleSchema = z.string().trim().min(1, 'Add a title before saving.').max(200, 'Keep task titles under 200 characters.');
+const taskTitleSchema = z
+  .string()
+  .trim()
+  .min(1, 'Add a title before saving.')
+  .max(200, 'Keep task titles under 200 characters.');
 const taskIdSchema = z.number().int().positive();
+const taskStatusSchema = z.enum(['todo', 'in_progress', 'complete']);
 
 export async function createTask(title: string) {
   const result = taskTitleSchema.safeParse(title);
 
   if (!result.success) {
-    return { success: false, error: result.error.issues[0]?.message ?? 'Enter a valid task title.' };
+    return {
+      success: false,
+      error: result.error.issues[0]?.message ?? 'Enter a valid task title.',
+    };
   }
 
   try {
@@ -24,6 +32,10 @@ export async function createTask(title: string) {
         createdAt: Date.now(),
       })
       .returning({ id: tasks.id });
+    if (!task) {
+      return { success: false, error: 'We could not save that task. Try again.' };
+    }
+
     revalidatePath('/');
     return { success: true, id: task.id };
   } catch (error) {
@@ -32,15 +44,16 @@ export async function createTask(title: string) {
   }
 }
 
-export async function toggleTask(id: number, completed: boolean) {
+export async function updateTaskStatus(id: number, status: string) {
   const parsedId = taskIdSchema.safeParse(id);
+  const parsedStatus = taskStatusSchema.safeParse(status);
 
-  if (!parsedId.success) {
-    return { success: false, error: 'That task could not be found.' };
+  if (!parsedId.success || !parsedStatus.success) {
+    return { success: false, error: 'That task could not be updated.' };
   }
 
   try {
-    await db.update(tasks).set({ completed }).where(eq(tasks.id, parsedId.data));
+    await db.update(tasks).set({ status: parsedStatus.data }).where(eq(tasks.id, parsedId.data));
     revalidatePath('/');
     return { success: true };
   } catch (error) {

@@ -10,7 +10,7 @@ export default async function Home() {
 
   return (
     <main className="page-shell">
-      <TaskList initialTasks={savedTasks.map(({ id, title, completed }) => ({ id, title, completed }))} />
+      <TaskList initialTasks={savedTasks.map(({ id, title, status }) => ({ id, title, status }))} />
       <footer className="page-footer">
         <span>Personal task list</span>
         <span>Keep it light.</span>

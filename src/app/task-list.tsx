@@ -1,12 +1,26 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { createTask, deleteTask, toggleTask } from './actions';
+import { createTask, deleteTask, updateTaskStatus } from './actions';
+
+type TaskStatus = 'todo' | 'in_progress' | 'complete';
 
 type Task = {
   id: number;
   title: string;
-  completed: boolean;
+  status: TaskStatus;
+};
+
+const statusLabels: Record<TaskStatus, string> = {
+  todo: 'Not started',
+  in_progress: 'In progress',
+  complete: 'Complete',
+};
+
+const nextStatus: Record<TaskStatus, TaskStatus> = {
+  todo: 'in_progress',
+  in_progress: 'complete',
+  complete: 'todo',
 };
 
 type TaskListProps = {
@@ -18,7 +32,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
-  const completedCount = tasks.filter((task) => task.completed).length;
+  const completedCount = tasks.filter((task) => task.status === 'complete').length;
 
   function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,15 +40,15 @@ export function TaskList({ initialTasks }: TaskListProps) {
 
     startTransition(async () => {
       const result = await createTask(title);
-      if (!result.success) {
-        setError(result.error);
+      if (!result.success || result.id === undefined) {
+        setError(result.error ?? 'Something went wrong. Try again.');
         return;
       }
 
       const newTask = {
         id: result.id,
         title: title.trim(),
-        completed: false,
+        status: 'todo' as const,
       };
       setTasks((currentTasks) => [newTask, ...currentTasks]);
       setTitle('');
@@ -43,22 +57,22 @@ export function TaskList({ initialTasks }: TaskListProps) {
 
   function handleToggle(task: Task) {
     setError('');
-    const nextCompleted = !task.completed;
+    const status = nextStatus[task.status];
     setTasks((currentTasks) =>
       currentTasks.map((currentTask) =>
-        currentTask.id === task.id ? { ...currentTask, completed: nextCompleted } : currentTask,
-      ),
+        currentTask.id === task.id ? { ...currentTask, status } : currentTask
+      )
     );
 
     startTransition(async () => {
-      const result = await toggleTask(task.id, nextCompleted);
+      const result = await updateTaskStatus(task.id, status);
       if (!result.success) {
         setTasks((currentTasks) =>
           currentTasks.map((currentTask) =>
-            currentTask.id === task.id ? { ...currentTask, completed: task.completed } : currentTask,
-          ),
+            currentTask.id === task.id ? { ...currentTask, status: task.status } : currentTask
+          )
         );
-        setError(result.error);
+        setError(result.error ?? 'Something went wrong. Try again.');
       }
     });
   }
@@ -71,7 +85,7 @@ export function TaskList({ initialTasks }: TaskListProps) {
       const result = await deleteTask(task.id);
       if (!result.success) {
         setTasks((currentTasks) => [task, ...currentTasks]);
-        setError(result.error);
+        setError(result.error ?? 'Something went wrong. Try again.');
       }
     });
   }
@@ -84,7 +98,10 @@ export function TaskList({ initialTasks }: TaskListProps) {
           <h1 id="task-list-heading">Make room for what matters.</h1>
           <p className="intro-copy">A quiet place to capture the next thing, then let it go.</p>
         </div>
-        <div className="progress-mark" aria-label={`${completedCount} of ${tasks.length} tasks complete`}>
+        <div
+          className="progress-mark"
+          aria-label={`${completedCount} of ${tasks.length} tasks complete`}
+        >
           <span>{String(completedCount).padStart(2, '0')}</span>
           <small>done</small>
         </div>
@@ -117,30 +134,41 @@ export function TaskList({ initialTasks }: TaskListProps) {
 
       <div className="task-list-heading">
         <h2>Open threads</h2>
-        <span>{tasks.length === 0 ? 'Nothing here yet' : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}</span>
+        <span>
+          {tasks.length === 0
+            ? 'Nothing here yet'
+            : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
+        </span>
       </div>
 
       {tasks.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-symbol" aria-hidden="true">—</span>
+          <span className="empty-symbol" aria-hidden="true">
+            —
+          </span>
           <p>Your list is clear.</p>
           <span>Start with one small thing above.</span>
         </div>
       ) : (
         <ul className="task-list">
           {tasks.map((task) => (
-            <li key={task.id} className={`task-row${task.completed ? ' is-complete' : ''}`}>
+            <li key={task.id} className={`task-row status-${task.status}`}>
               <button
                 type="button"
                 className="task-check"
                 onClick={() => handleToggle(task)}
-                aria-label={task.completed ? `Mark “${task.title}” as active` : `Mark “${task.title}” as complete`}
-                aria-pressed={task.completed}
+                aria-label={`Mark “${task.title}” as ${statusLabels[nextStatus[task.status]].toLowerCase()}`}
+                aria-pressed={task.status === 'complete'}
                 disabled={isPending}
               >
-                <span aria-hidden="true">{task.completed ? '✓' : ''}</span>
+                <span aria-hidden="true">
+                  {task.status === 'complete' ? '✓' : task.status === 'in_progress' ? '·' : ''}
+                </span>
               </button>
-              <span className="task-title">{task.title}</span>
+              <span className="task-title">
+                {task.title}
+                <small className="task-status">{statusLabels[task.status]}</small>
+              </span>
               <button
                 type="button"
                 className="task-delete"
