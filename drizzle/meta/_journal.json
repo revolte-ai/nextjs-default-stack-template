@@ -1,1 +1,13 @@
-{"version":"7","dialect":"sqlite","entries":[]}
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1793191854880,
+      "tag": "0000_lush_bushwacker",
+      "breakpoints": true
+    }
+  ]
+}
