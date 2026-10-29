@@ -1,0 +1,3 @@
+Sample File
+
+This is a representative plain-text sample file. It demonstrates the intended format for a small, readable example artifact in the project workspace.
