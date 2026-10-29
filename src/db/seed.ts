@@ -1,10 +1,11 @@
 import 'dotenv/config';
+import { db } from './index';
+import { tasks } from './schema';
 
-async function main() {
-  console.log('Seeding complete.');
-}
+await db.insert(tasks).values([
+  { title: 'Choose the one thing that would make today lighter', status: 'todo' },
+  { title: 'Clear the first ten minutes of your inbox', status: 'in-progress' },
+  { title: 'Make a little room for a proper break', status: 'completed' },
+]);
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+console.log('Seeded tasks.');
